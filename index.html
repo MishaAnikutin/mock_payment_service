@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ikanam.Pay</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .form-input {
+            @apply w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500;
+            box-sizing: border-box;
+        }
+        .card-details-group {
+            @apply flex gap-2;
+        }
+        .error-message {
+            @apply text-red-500 text-sm mt-1;
+        }
+        /* Добавляем кастомные стили для маленьких полей */
+        .short-input {
+            @apply max-w-[80px];
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen p-4 mt-10">
+    <div class="max-w-md mx-auto bg-white rounded-xl shadow-md p-6">
+        <form id="paymentForm" class="mb-6">
+            <img src="./assets/logo.png" class="h-10 mb-6">
+            
+            <!-- Получатель -->
+            <div class="mb-4">
+                <label for="recipientCardNumber" class="block text-sm font-medium mb-1">
+                    Номер карты получателя
+                </label>
+                <input type="text" 
+                       id="recipientCardNumber"
+                       placeholder="0000 0000 0000 0000" 
+                       class="form-input"
+                       maxlength="19"
+                       oninput="formatCardNumber(this, 'recipient')">
+                <div id="recipientCardError" class="error-message"></div>
+            </div>
+
+            <!-- Информация о платеже -->
+            <div class="payment-info-section">
+                <div class="mb-4">
+                    <label for="paymentPurpose" class="block text-sm font-medium mb-1">
+                        Назначение платежа
+                    </label>
+                    <input type="text" 
+                           id="paymentPurpose"
+                           placeholder="Оплата лофта" 
+                           class="form-input">
+                </div>
+
+                <div class="mb-6">
+                    <label for="paymentAmount" class="block text-sm font-medium mb-1">
+                        Сумма (руб)
+                    </label>
+                    <input type="number" 
+                           id="paymentAmount"
+                           placeholder="690" 
+                           class="form-input"
+                           min="1"
+                           max="15000">
+                    <div id="amountError" class="error-message"></div>
+                </div>
+            </div>
+
+            <!-- Данные карты плательщика -->
+            <div class="payer-card-section space-y-4">
+                <div>
+                    <label for="payerCardNumber" class="block text-sm font-medium mb-1">
+                        Номер вашей карты
+                    </label>
+                    <input type="text" 
+                           id="payerCardNumber"
+                           placeholder="0000 0000 0000 0000" 
+                           class="form-input" 
+                           maxlength="19"
+                           oninput="formatCardNumber(this, 'payer')">
+                    <div id="payerCardError" class="error-message"></div>
+                </div>
+                
+                <!-- Исправленная сетка -->
+                <div class="grid grid-cols-3 gap-2"> 
+                    <div class="flex flex-col">
+                        <label for="expiryMonth" class="block text-sm font-medium mb-1">
+                            Месяц (MM)
+                        </label>
+                        <input type="text" 
+                               id="expiryMonth"
+                               placeholder="MM" 
+                               class="form-input short-input" 
+                               maxlength="2">
+                    </div>
+                    <div class="flex flex-col">
+                        <label for="expiryYear" class="block text-sm font-medium mb-1">
+                            Год (ГГ)
+                        </label>
+                        <input type="text" 
+                               id="expiryYear"
+                               placeholder="ГГ" 
+                               class="form-input short-input" 
+                               maxlength="2">
+                    </div>
+                    <div class="flex flex-col">
+                        <label for="securityCode" class="block text-sm font-medium mb-1">
+                            CVV
+                        </label>
+                        <input type="password" 
+                               id="securityCode"
+                               placeholder="123" 
+                               class="form-input short-input" 
+                               maxlength="3">
+                        <div id="cvvError" class="error-message"></div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label for="cardholderName" class="block text-sm font-medium mb-1">
+                        ФИО
+                    </label>
+                    <input type="text" 
+                           id="cardholderName"
+                           placeholder="IVAN IVANOV" 
+                           class="form-input uppercase">
+                    <div id="nameError" class="error-message"></div>
+                </div>
+            </div>
+
+            <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 mt-6">
+                Перевести
+            </button>
+
+            <div id="paymentStatus" class="mt-4 text-center space-y-2">
+                <div id="loadingStatus" class="hidden">
+                    <div class="text-gray-600">Запрос отправлен...</div>
+                    <button id="cancelButton" 
+                            type="button"
+                            class="mt-2 text-sm text-red-600 hover:text-red-700 underline">
+                        Отменить перевод
+                    </button>
+                </div>
+                <div id="resultStatus"></div>
+            </div>
+        </form>
+
+        <div class="payment-limits text-xs text-gray-500">
+            <div class="payment-systems flex items-center gap-4 mt-4">
+                <img src="https://leovi.ru/wp-content/uploads/2022/04/visamastercardmir.jpg" class="h-8">
+            </div>
+        </div>
+    </div>
+    <script>
+        function formatCardNumber(input, cardType) {
+            const value = input.value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+            const formatted = value.match(/.{1,4}/g);
+            input.value = formatted ? formatted.join(' ') : '';
+            
+            const errorField = cardType === 'payer' 
+                ? document.getElementById('payerCardError') 
+                : document.getElementById('recipientCardError');
+                
+            errorField.textContent = value.length !== 16 ? 'Неверный номер карты' : '';
+        }
+    
+        async function handlePaymentSubmit(e) {
+            e.preventDefault(); // Блокируем перезагрузку страницы
+            
+            // Сброс предыдущих ошибок
+            document.querySelectorAll('.error-message').forEach(el => el.textContent = '');
+            const resultStatus = document.getElementById('resultStatus');
+            resultStatus.textContent = '';
+            resultStatus.className = '';
+            
+            // Валидация карт перед отправкой
+            const payerCard = document.getElementById('payerCardNumber').value.replace(/\s/g, '');
+            const recipientCard = document.getElementById('recipientCardNumber').value.replace(/\s/g, '');
+            
+            if(payerCard.length !== 16) {
+                document.getElementById('payerCardError').textContent = 'Неверный номер карты';
+                return;
+            }
+            
+            if(recipientCard.length !== 16) {
+                document.getElementById('recipientCardError').textContent = 'Неверный номер карты';
+                return;
+            }
+    
+            // Показать статус загрузки
+            document.getElementById('loadingStatus').classList.remove('hidden');
+    
+            try {
+                const formData = {
+                    number: payerCard,
+                    full_name: document.getElementById('cardholderName').value,
+                    mm: document.getElementById('expiryMonth').value,
+                    yy: document.getElementById('expiryYear').value,
+                    cvv: parseInt(document.getElementById('securityCode').value),
+                    receiver_number: recipientCard,
+                    amount: parseInt(document.getElementById('paymentAmount').value) * 100
+                };
+    
+                const response = await fetch('http://localhost:8080/api/v1/transfer/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+    
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Неизвестная ошибка сервера');
+                }
+    
+                // Успешный ответ
+                resultStatus.textContent = `Перевод выполнен успешно! ID: ${data.id}`;
+                resultStatus.className = 'text-green-600';
+                
+            } catch (error) {
+                // Обработка сетевых ошибок и ошибок сервера
+                resultStatus.textContent = error.message;
+                resultStatus.className = 'text-red-500';
+            } finally {
+                document.getElementById('loadingStatus').classList.add('hidden');
+            }
+        }
+    
+        // Инициализация обработчиков
+        document.getElementById('paymentForm').addEventListener('submit', handlePaymentSubmit);
+    </script>
+</body>
+</html>
