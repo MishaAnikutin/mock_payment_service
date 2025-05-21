@@ -3,7 +3,7 @@
 Было интересно разобраться в сущностях финтеха, сложностях конкурентной записи и проблеме Lost Update 
 [alt text](assets/image.png)
 
-[](https://avatars.mds.yandex.net/i?id=08ec1b4889b62c38280a75baba49e8f2_l-5235458-images-thumbs&n=13)
+![image](https://avatars.mds.yandex.net/i?id=08ec1b4889b62c38280a75baba49e8f2_l-5235458-images-thumbs&n=13)
 Реализовал сервис трансфера платежей в DDD. Транзакционность достиг с помощью паттерна `Unit of Work` 
 
 Благодаря условию на возможные предыдущие состояния идейно решается Lost Update
